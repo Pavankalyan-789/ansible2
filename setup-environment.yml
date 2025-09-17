@@ -1,72 +1,76 @@
 ---
-- name: Setup complete development environment for Python
+- name: Provision Python Development Environment
   hosts: all
-  become: yes
+  become: true
 
   vars:
-    python_project_dir: /opt/python-boilerplate
-    python_repo_url: "https://github.com/Retouch-It-Services/devOps-retouch-python-fastapi-boilerplate"
+    project_root: /opt/python-boilerplate
+    repo_url: "https://github.com/Retouch-It-Services/devOps-retouch-python-fastapi-boilerplate.git"
 
   tasks:
+
     # ---------------------------
-    # General System Setup
+    # System preparation
     # ---------------------------
-    - name: Update apt repositories
+    - name: Refresh apt cache
       apt:
         update_cache: yes
+        cache_valid_time: 3600
 
-    - name: Install essential development tools
-      apt:
+    - name: Install base packages
+      package:
         name:
           - git
           - curl
-          - unzip
           - wget
+          - unzip
           - build-essential
           - software-properties-common
         state: present
 
-
     # ---------------------------
-    # Python Environment Setup
+    # Python installation
     # ---------------------------
-    - name: Install Python and pip
-      apt:
+    - name: Ensure Python stack is present
+      package:
         name:
           - python3
           - python3-pip
           - python3-venv
         state: present
 
-    - name: Ensure target directory exists
-      file:
-        path: "{{ python_project_dir }}"
+    # ---------------------------
+    # Project setup
+    # ---------------------------
+    - name: Create project directory
+      ansible.builtin.file:
+        path: "{{ project_root }}"
         state: directory
         owner: root
         group: root
         mode: '0755'
 
-    - name: Clone Python boilerplate repository
-      git:
-        repo: "{{ python_repo_url }}"
-        dest: "{{ python_project_dir }}"
+    - name: Checkout boilerplate repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_root }}"
         version: main
         force: yes
 
-    - name: Create Python virtual environment
-      command: python3 -m venv {{ python_project_dir }}/venv
+    - name: Setup virtual environment
+      ansible.builtin.command: python3 -m venv {{ project_root }}/venv
       args:
-        creates: "{{ python_project_dir }}/venv/bin/activate"
+        creates: "{{ project_root }}/venv/bin/activate"
 
-    - name: Install dependencies if requirements.txt exists
-      pip:
-        requirements: "{{ python_project_dir }}/requirements.txt"
-        virtualenv: "{{ python_project_dir }}/venv"
-      ignore_errors: yes
+    - name: Install project dependencies
+      ansible.builtin.pip:
+        requirements: "{{ project_root }}/requirements.txt"
+        virtualenv: "{{ project_root }}/venv"
+      ignore_errors: true
 
-    - name: Set permissions for project directory
-      file:
-        path: "{{ python_project_dir }}"
+    - name: Normalize directory permissions
+      ansible.builtin.file:
+        path: "{{ project_root }}"
         owner: root
         group: root
-        recurse: yes
+        recurse: true
